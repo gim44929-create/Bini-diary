@@ -324,7 +324,6 @@
     </div>
 
     <script>
-        // 👑 비니님이 찾아오신 진짜 주소 완벽 박제 완료!
         const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzIEf0s0dJCVQTeDZdyaPnqdCZbUGu0fe5n0XXq-eyfnH-7i_XsQP1svamISYE54K-b/exec";
 
         let myLogs = [];
@@ -429,7 +428,13 @@
             if (currentCount >= num) currentCount = num - 1; else currentCount = num;
             waterData[getTodayStr()] = currentCount;
             drawDrops(); updateBadges();
-            fetch(GOOGLE_WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'water', date: getTodayStr(), type: '', name: '', comment: '', stars: '', water: currentCount }) });
+            
+            // 🚨 mode: 'no-cors' 제거 및 표준 데이터 전송 방식으로 수정
+            fetch(GOOGLE_WEB_APP_URL, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ action: 'water', date: getTodayStr(), water: currentCount }) 
+            });
         }
 
         function drawDrops() {
@@ -462,9 +467,24 @@
             document.getElementById('foodName').value = ''; document.getElementById('foodComment').value = '';
             document.getElementById('photoPreview').style.display = 'none'; document.getElementById('photoPreview').src = '';
 
-            const bodyData = { action: 'add', date: getTodayStr(), type: mealType, name: foodName, comment: foodComment, stars: foodStars, water: waterData[getTodayStr()] || 0 };
+            // 🚨 안전한 수신을 위해 x-www-form-urlencoded 통신 방식으로 완전 수정
+            fetch(GOOGLE_WEB_APP_URL, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ 
+                    action: 'add', 
+                    date: getTodayStr(), 
+                    type: mealType, 
+                    name: foodName, 
+                    comment: foodComment, 
+                    stars: foodStars, 
+                    water: waterData[getTodayStr()] || 0 
+                }) 
+            }).then(() => {
+                // 구글 시트에 들어간 직후 무한 부활 방지를 위해 창고 새로고침 유도
+                setTimeout(() => { loadFromGoogleSheet(); }, 800);
+            });
             encodedPhotoBase64 = ""; 
-            fetch(GOOGLE_WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(bodyData) });
         }
 
         function deleteLog(uniqueKey, name, date, type) {
@@ -491,10 +511,13 @@
             let localPhotos = getSavedPhotos();
             if(localPhotos[uniqueKey]) { delete localPhotos[uniqueKey]; localStorage.setItem('bini_saved_photos', JSON.stringify(localPhotos)); }
 
+            // 🚨 삭제 신호가 유실되지 않도록 정석 통신 방식으로 수정
             fetch(GOOGLE_WEB_APP_URL, {
                 method: 'POST',
-                mode: 'no-cors',
-                body: JSON.stringify({ action: 'delete', date: date, name: name, type: type })
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ action: 'delete', date: date, name: name, type: type })
+            }).then(() => {
+                setTimeout(() => { loadFromGoogleSheet(); }, 800);
             });
             pendingDeleteTarget = null; closePopup();
         }
